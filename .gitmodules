@@ -1,0 +1,3 @@
+[submodule "Packages/RIblast"]
+	path = Packages/RIblast
+	url = https://github.com/fukunagatsu/RIblast
