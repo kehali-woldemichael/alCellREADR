@@ -36,8 +36,8 @@ def output_RIblast(targetSeq, sesRNAs):
     outputName = f"{path_outputDir}/output/output.csv"  
 
     # Generating pd.DataFrame for storing calculated values
-    columns_RIblast = [' Accessibility Energy', ' Hybridization Energy', ' Interaction Energy', ' BasePair',
-                    ' Accessibility Energy', ' Hybridization Energy', ' Interaction Energy', ' BasePair']
+    columns_RIblast = ['AccessibilityEnergy', 'HybridizationEnergy', 'InteractionEnergy', 'BasePair',
+                    'AccessibilityEnergy', 'HybridizationEnergy', 'InteractionEnergy', 'BasePair']
     useful_RIblast =  pd.DataFrame(columns = columns_RIblast)
 
     # Generating query database
@@ -46,10 +46,10 @@ def output_RIblast(targetSeq, sesRNAs):
 
     # Iteratively generating calculations for sesRNA-target interaction
     # Made sure to go through sesRNA files in order
-    for entry in sorted(os.scandir(f"{path_outputDir}/query"), key=lambda e: e.name):
+    for i, entry in enumerate(sorted(os.scandir(f"{path_outputDir}/query"), key=lambda e: e.name), start = 0):
         logging.debug(f"Path for current sesRNA {entry.path}")
         # Running RIblast calculations
-        os.system(f"RIblast ris -i {entry.path} -o {outputName} -d {path_db}")
+        os.system(f"RIblast ris -i {entry.path} -o {outputName} -d {path_db} >/dev/null 2>&1")
 
         # Remove first two lines from CVS to allow for parsing into pandas.Dataframe
         os.system(f"sed -i 1,2d {outputName}")
@@ -60,6 +60,10 @@ def output_RIblast(targetSeq, sesRNAs):
 
         topHybridizationE = sorted_outputCSV[[' Accessibility Energy', ' Hybridization Energy', ' Interaction Energy', ' BasePair']].iloc[0:1]
         secondHybridizationE = sorted_outputCSV[[' Accessibility Energy', ' Hybridization Energy', ' Interaction Energy', ' BasePair']].iloc[1:2]
+
+        topHybridizationE.columns = topHybridizationE.columns.str.replace(' ', '')
+        secondHybridizationE.columns = secondHybridizationE.columns.str.replace(' ', '')
+
         temp_RIblast_ouput = pd.concat([topHybridizationE.reset_index(drop=True), secondHybridizationE.reset_index(drop=True)], axis = 1)
 
         # Appending calculations for current sesRNA values
@@ -68,8 +72,19 @@ def output_RIblast(targetSeq, sesRNAs):
         # Clearing csv
         os.system(f"rm -rf {outputName}")
         # Clear BioPython temp fasta file for sesRNA
-        os.system(f"rm -rf {entry.path}")
+        #os.system(f"rm -rf {entry.path}")
 
+
+    # Renaming columns to remove duplicates
+    columns_RIblast = ['AccessibilityEnergy_1', 'HybridizationEnergy_1', 'InteractionEnergy_1', 'BasePair_1',
+                    'AccessibilityEnergy_2', 'HybridizationEnergy_2', 'InteractionEnergy_2', 'BasePair_2']
+    useful_RIblast.columns = columns_RIblast
+    
+    # Sequences for sesRNAs 
+    sequences = pd.DataFrame([str(seq) for seq in sesRNAs], columns = ['Sequence']) 
+    
+    # Clearing temporary file in outputs folder 
     clear_outputs()
     
-    return useful_RIblast
+    # Returns dataframe with sequences and RIblast metrics for each sesRNA
+    return pd.concat([sequences.reset_index(drop = True), useful_RIblast.reset_index(drop = True)], axis = 1)
